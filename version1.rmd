@@ -1,0 +1,947 @@
+---
+title: "California Fire History Since 1950"
+author: "Thomas Smale"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE, comment=NA)
+```
+
+# Introduction
+
+California has had our largest fires in recorded history the last 2
+years. Fires have had an effect on everyone in California weather it be
+due to air quality, or loss of property and loved ones. One school
+morning I woke up to a sky full of dark smoke, the smoke was so bad I
+could barely see down the block. Since that day in Chico there have been
+multiple other instances where smoke has blanketed the skies of
+California and ash has fallen from the skies. Smoke over the horizon is
+a terrible feeling as life as you know it can rapidly change without
+there being anything you can do about it. As a data science student, we
+are often just on our computer but we are learning complex skills which
+we can apply to the real world to make a difference. This project is a
+great opportunity to spend our time helping in the effort to solve
+current real world problems.
+
+## Goal
+
+I will be exploring this fire perimeter dataset to learn more about what
+measures cal fire is taking to combat fires. I would like to see if I
+can tell if any of these measures have been successful or unsuccessful.
+In addition I would like to see what is causing these fires in
+California. I would like to see just how many acres are burning and what
+areas have been affected the most.
+
+My initial data science questions are
+
+
+1.  What were some of the biggest fires in California history?
+2.  Which agencies respond to the most fires? 
+3.  How long does it take for fires to be contained?
+4.  What causes the biggest fires? 
+5.  Are certain causes of fires becoming more or less frequent? 
+6.  Can the fire cause be predicted? 
+7.  Is there a relationship between year and fire size? 
+8.  Are no burn days effective in preventing human caused fires?
+9.  Can we calculate what troops are the busiest? 
+10. Is there a linear relationship between fire size and duration? 
+
+## About the dataset
+
+I am using the 2020 California Fire Perimeters data set available from
+[gis.data.gov](https://gis.data.ca.gov/datasets/e3802d2abf8741a187e73a9db49d68fe_0/explore?showTable=true). A fire perimeter is the boundary of a fire measured by acres in this data set. This data set includes data from many different government agencies from different time periods. This data set includes prescribed burns and wildfire perimeters dating back to 1950
+for CAL FIRE. Data from 2021 is not released until the fire season is
+over, which is on going at the time of this (Dec 18 2021). The United States Forest Service, USFS, has submitted records as far back as
+1878 and the National Park Service, NPS, has submitted records from as far back as 1921. The types of fires included in this report has varied over the centuries which may add bias to the results. A couple important notes about the data is that from 1950 to 2001 it
+included USFS fires 10 acres and greater and CAL FIRE fires 300 acres
+and greater. BLM and NPS started inputting data since 2002 collecting
+fires 10 acres and greater. From 2002-2014 CAL FIRE expanded its
+criteria by including timber fires 10 acres or greater, brush fires 50
+acres and greater, grass fires 300 acres and greater in size, wild land
+fires destroying 3 or more structures, and wild land fires causing
+300,000 or more in damage. From 2014 and on the monetary requirement was
+dropped and the damage requirement is 3 or more habitable structures or
+commercial structures. In 1989 each unit was assigned to verify all 300
+plus Acre fires from pre 1989 and as a result there is a statewide GIS
+layer from 1950-1999. Some errors that could occur when exploring this
+data is that duplicates may exist. For example, USFS and CAL FIRE could
+both capture the fire perimeter and submit it. In some cases they could
+even report different parameters of the same fire. While duplicate
+records is rare, there is an asterisk next to the cells that are the
+most accurate. 
+
+### Explanation of variables
+-   `YEAR` This set contains fire data from 1878 to 2020.
+-   `STATE` While this data set is from CALFIRE there is some data from Oregon, Nevada, and Arizona. This data reports fires that occurred in both states, it does not specify the origin. 
+-   `AGENCY` Different services may respond to the fires depending on
+    jurisdiction. These services provide data to Cal Fire as a courtesy
+    Different values we may see are CDF for California Department of
+    Forestry and Fire Protection (Cal Fire), United States Forest
+    Service (USFS), Bureau of Land Management (BLM), National Park
+    Service (NPS), Contract Country (CC), Other FED (Federal Fire
+    Protection Agency).
+-   `UNIT_ID` This is a series of digits to uniquely identify what units
+    are responding to the fire.
+-   `FIRE_NAME` Fires are often named for geographic location or nearby
+    landmarks like roads, lakes, rivers, and mountains.
+-   `INC_NUM` Number assigned by thee Emergency Command Center of the
+    responsible agency for the fire. 
+-   `ALARM_DATE` The date the fire was brought to the attention of
+    CALFIRE.
+-   `CONT_DATE` The date the fire was contained. A fire is 100%
+    contained when a perimeter has been formed around the fire that will
+    prevent it from spreading beyond the line. To form the perimeter
+    fire fighters may use trenches (normally 10-12 feet and shallow),
+    natural barriers like rivers, or even already burned patches of
+    land. Once a fire is contained it may still be burning but within
+    the perimeter.
+-   `CAUSE` An enumeration of values 1-19 for the reason the fire
+    started. Enumeration 4 is campfire but enumeration 19 is illegal
+    alien campfire which is confusing. Another confusing enumeration is
+    12 and 13 for firefighter training and non-firefighter training.
+    Wouldn't every fire that wasn't firefighter training fall under this
+    category of non-firefighter training. Interesting enumerations is 18
+    for escaped prescribed burn, 17 volcanic, 11 power line, 7 arson, 14
+    unknown, and 16 aircraft.
+-   `COMMENTS` Miscellaneous comments that can provide more information
+    about the fire.
+-   `REPORT_AC` Estimated area consumed in fire reported in acres.
+-   `GIS_ACRES` GIS is a geographic information system that uses
+    information from satellites to make inferences. This is numerical data and the units are acres. Given the data is more complete for GIS_ACRES we will be working with this mostly.
+-   `C_METHOD` The method used to collect perimeter data. C stands for
+    collection here. This is a range of digits from 1-8 that can be GPS,
+    infrared, photos, hand drawn, or mixed collection methods.
+-   `OBJECTIVE` Either 1 suppression (wildfire) or 2 resource benefit
+    (WFU). A WFU is allowing naturally ignited wild land fires like
+    those started by lightning or lava to burn when in inaccessible
+    terrain where people are not threatened. This is to avoid putting
+    firefighters at risk and keep the land healthy.
+-   `FIRE_NUM` This has no description and is unclear at the moment. It is
+    probably a method used to identify fires. There is not much research on
+    it either, this will mostly be ignored.
+-   `SHAPE_Length` This is most likely GIS data. These map units are
+    based on the coordinate system it could be square meters or
+    something else. It could also be angular or linear.
+-   `SHAPE_Area` The units are unknown.
+
+```{r libraries, include=FALSE, message=FALSE}
+library(tidyverse)
+library(modelr)
+library(caret)
+library(base)
+library(knitr)
+library(lubridate)
+library(gridExtra)
+library(grid)
+```
+
+``` {r include=FALSE}
+#Set up the data
+fires <- read.csv('~/classroom/csci385/California_Fire_Perimeters_(all).csv')
+names(fires) <- tolower(names(fires))
+fires <- rename(fires, "year"="year_")
+fires <- select(fires, -"objectid")
+```
+
+## Discovery:
+```{r echo=FALSE}
+dimensions <- dim(fires)
+paste("The fire dataset dimensions are (", 
+      dimensions[1], ", ", dimensions[2], ")", sep="")
+```
+
+``` {r}
+missing_data <- c(1:ncol(fires))
+for(col in 1:ncol(fires)) { 
+  colname <- colnames(fires)[col]
+  nans <- sum(is.na(fires[, col]))
+  bad_strings <- c('', ' ', "UNKNOWN", "UKNOWN", "N/A")
+  bad_strings_count <- sum(fires[, col] %in% bad_strings)
+  zeros <- sum(fires[, col] <= 0)
+  total <- 0
+  if(!is.na(nans)) { 
+    total <- nans 
+  }
+  if(!is.na(bad_strings_count)) { 
+    total <- total + bad_strings_count
+  }
+  if(!is.na(zeros)) { 
+    total <- total + zeros
+  }
+  missing_data[col] <- total
+}
+missing_data <- data.frame(colnames(fires), missing_data)
+colnames(missing_data) <- c("Column", "Num NA's, '', or <= 0's")
+missing_data
+```
+There are many ways to deal with missing data like ignoring it or changing them to the mean or median. It is important to not change the integrity of the data if you manipulate missing data. The majority of the NA's are in columns report_ac and c_method which means I will use shape_area instead. The rest of the values mostly come from missing values like ''. This does not matter so much for comments but is a concern for inc_num, alarm_date, cont_data, and fire_num. For fire_name, many of the "UNKNOWN" fire names may stem from small prescribed burns. This is something to keep in mind as I use this data and will check to see if those old values originate from the older data or not. 
+
+### Brief summaries of every variable
+**YEAR**
+``` {r echo=FALSE, message=FALSE, warning=FALSE}
+year_range <- range(fires$year, na.rm = TRUE)
+paste("The range of years in the dataset is from", year_range[1], "to", 
+      year_range[2])
+years <- group_by(fires, year) %>% summarise(n=n())
+years_plot <- ggplot(years, aes(x=year, y=n)) + geom_line()
+years_plot + ggtitle("Number of observations per year") + 
+  xlab("Year") + ylab("Observations")
+```
+
+This graph does not prove that more fires are occurring every year because we do not know how accurate reporting is in the early 1900s. CAL FIRE has data set going back to 1950 but USFS has data from 1878 in here. The two years with the most amount of data is 2017 and 2020 which has had the worse fires in recent history.
+
+**STATE**
+``` {r echo=FALSE, comment=NA, results='asis'}
+states <- fires %>% filter(!is.na(state) & state != '') %>% select(state)
+kable(table(states), caption = "Number of observations for each state")
+```
+
+``` {r include=FALSE, results='asis', message=FALSE}
+out_of_state <- select(fires, year, state, fire_name, gis_acres) %>% 
+  filter(state != "CA" & !is.na(state) & state != '')
+out_of_state_sorted <- group_by(out_of_state, gis_acres) %>%
+  arrange(desc(gis_acres))
+kable(out_of_state_sorted, caption="Out of state fires in this data")
+```
+
+``` {r include=FALSE}
+select(fires, year, state, agency) %>% filter(state != 'CA' & agency == 'CDF')
+```
+No fires that happened out of this state were under jurisdiction of Cal Fire which suggests these fires may have originated outside of California. These fires can be potentially misleading since the boundary can include both California and the other state. There is no way to determine what the boundary is for the California part of the fire. 
+
+**AGENCY**
+``` {r results='asis', echo=FALSE, message=FALSE}
+agencies <- fires %>% select(agency) %>% 
+  filter(!is.na(agency) & agency != '') %>% 
+  group_by(agency) %>% 
+  summarise(num_fires=n()) %>% 
+  arrange(desc(num_fires))
+kable(agencies, caption="Number of reports by each agency")
+```
+Surprisingly the United States Forest Service has been in charge of more
+fires than CalFire. However, this is likely due to them reporting many smaller prescribed burns. I wonder who is in charge of more land, and how jurisdiction is delegated. Private (PVT) was an option in the official documentation but there appears to be no occurrences in this data set. It seems like the groups to pay the most attention to are BLM, CCO, CDF, LRA, NPS, and USF.
+
+``` {r echo=FALSE}
+# Number of fires >= 5000 acres that agencies have responded too 
+agencies_large_fires <- fires %>% 
+  filter(gis_acres >= 5000 | report_ac >= 5000) %>% 
+  group_by(year, agency) %>% 
+  summarise(count = n()) %>% 
+  select(agency, count, year) %>% 
+  arrange(desc(count))
+ggplot(agencies_large_fires, aes(x=agency, y=count)) + 
+  geom_bar(stat="identity") + 
+  ggtitle("Agencies in Charge of Fires >= 5000 Acres Since 1878") + 
+  xlab("Agency") + ylab("Numer of Fires")
+```
+
+```{r echo=FALSE}
+agencies_large_fires %>% 
+  filter(year > 1900) %>%
+  subset(agency %in% c("USF", "CDF", "CCO", "BLM", "NPS")) %>% 
+  ggplot(aes(x=year, y=count, group=agency, color=agency)) +
+  geom_smooth(method='loess', se=FALSE) +
+  ggtitle("Agencies in Charge of Fires >= 5000 Acres") +
+  xlab("Year") + ylab("Number of Fires")
+```
+
+We continue to see that the National Park Service has jurisdiction over more large fires than CAL Fire. Despite the increase of fires in recent years, the number of contracted counties in charge of fires has decreased. However, the Bureau of Land Management and National Park Service have been increasing their aid in combating California Fires.
+
+**UNIT_ID**
+``` {r include=FALSE}
+units <- fires$unit_id 
+num_units <- unique(units) %>% length() 
+```
+
+```{r results='asis', message=FALSE}
+out_of_state_units <- fires %>% 
+  select(state, unit_id) %>% 
+  filter(state != "CA" & state != "" & !is.na(state) & unit_id != '') %>% 
+  unique()
+in_state_units <- fires %>% 
+  select(state, unit_id) %>% 
+  filter(state == "CA" & state != '' & !is.na(state) & unit_id != '') %>%
+  unique()
+#See if there are any units belonging to both states
+cross_state_units <- c() 
+for(row in 1:nrow(in_state_units)) { 
+  unit <- in_state_units[row, "unit_id"]
+  if(sum(out_of_state_units[, "unit_id"] == unit) > 0) { 
+    cross_state_units <- c(cross_state_units, unit)
+    }
+}
+cross_state_units_df <- fires %>% 
+  filter(unit_id == cross_state_units & state != '' & !is.na(state)) %>% 
+  select(state, agency, unit_id, gis_acres, fire_name) %>% 
+  group_by(state, agency, unit_id) %>% 
+  summarise(gis_acres_total = sum(gis_acres)) %>% 
+  arrange(unit_id)
+kable(cross_state_units_df, caption = 
+        "The following units were responsible for fires in multiple states")
+```
+The reason that there are some units in charge of fires in multiple states is because they belong to federal organizations like United States Forest Service or Bureau of Land Management. 
+
+```{r results='asis'}
+calfire_units_biggest_fire <- fires %>% 
+  filter(agency == "CDF" & !is.na(gis_acres)) %>% 
+  group_by(unit_id) %>% 
+  slice(which.max(gis_acres)) %>% 
+  select(year, agency, unit_id, fire_name, gis_acres) %>% 
+  arrange(desc(gis_acres)) %>% 
+  head(n=10)
+kable(calfire_units_biggest_fire, caption="CAL FIRE Units that Responded to the Top 10 Biggest Fires in California History")
+```
+```{r include=FALSE}
+#Some of the busiest troops 
+units_summary_info <- fires %>% 
+  filter(!is.na(gis_acres) & !is.na(unit_id) & unit_id != '') %>% 
+  group_by(unit_id) %>% 
+  summarise(avg_fire=mean(gis_acres), 
+            standard_deviation=sd(gis_acres),
+            fire_count=n()) %>% 
+  ungroup() %>% 
+  filter(fire_count > 5 & standard_deviation != 0) %>% 
+  arrange(desc(fire_count)) 
+units_summary_info
+```
+
+``` {r include=FALSE}
+#Another way to get the max value from a group and retain the other columns
+fires %>% filter(agency != "CDF") %>% 
+  group_by(unit_id) %>% top_n(1, gis_acres) %>% 
+  select(year, agency, unit_id, fire_name, gis_acres) %>%
+  arrange(desc(gis_acres))
+```
+I would like to calculate the busiest years for each unit, however an accurate way of calculating this is stopping me. Factors to consider are center, spread, range, count, and max fires for each unit every year. I need a function that will return the hardest year based off this data.
+
+**FIRE_NAME**
+``` {r results='asis'}
+#There's still other bad fire names in the data set
+bad_fire_names <- c("UNKNOWN", "N/A", "", "UKNOWN", " ")
+popular_fire_names <- fires %>%
+  filter(!is.na(fire_name)) %>% 
+  subset(!(fire_name %in% bad_fire_names)) %>% 
+  group_by(fire_name) %>% 
+  count(name="count") %>% 
+  arrange(desc(count)) %>% 
+  head(n=10)
+kable(popular_fire_names, caption="10 Most Popular Names for Fires")
+```
+
+``` {r results='asis'}
+biggest_fire_names <- fires %>% 
+  arrange(desc(gis_acres)) %>% 
+  select(year, fire_name, gis_acres) %>% 
+  head(n=5)
+kable(biggest_fire_names, caption="Top 5 Biggest Fires in California History and their Names")
+```
+
+``` {r echo=FALSE}
+print("A moment of condolences for anyone affected by the Camp Fire in Paradise or any other fire.")
+camp_fire <- fires %>% 
+  filter(fire_name == "CAMP" & year == 2018 & gis_acres > 30) %>% 
+  select(fire_name, year, unit_id, gis_acres, alarm_date, cont_date)
+camp_fire$alarm_date <- as.Date(camp_fire$alarm_date, "%Y/%m/%d")
+camp_fire$cont_date <- as.Date(camp_fire$cont_date, "%Y/%m/%d")
+camp_fire
+```
+Fire names are not unique and there are some fires that share the same name. There are many fire names that have been entered in incorrectly, that also contain back slashes or other gibberish.
+
+**ALARM_DATE**
+``` {r include=FALSE}
+fires %>% group_by(alarm_date) %>% summarise(n=n()) %>% 
+  arrange(desc(n)) %>% filter(alarm_date != "") %>% head()
+
+#View(fires %>% filter(alarm_date == "2018/11/08 00:00:00+00"))
+fires %>% select(alarm_date, report_ac, fire_name) %>% 
+  arrange(desc(report_ac)) %>% head()
+
+``` 
+
+``` {r results='asis', include=FALSE}
+dates <- fires$alarm_date[fires$alarm_date != ""] %>%
+  parse_datetime("%Y/%m/%d %H:%M:%S %z", na = c("", "NA"))
+dates <- dates[!is.na(dates)]
+months <- format(dates, "%m")
+kable(table(months), caption="Number of reported fires ber month")
+```
+
+``` {r include=FALSE}
+#4 methods to search by date
+dates <- fires$alarm_date[fires$alarm_date != ""]
+dates <- dates[!is.na(dates)]
+fourth_july <- dates[substr(dates, 6, 10) == "06/04"]
+mask <- fires$alarm_date %>% str_detect(regex(".06/04.", dotall=TRUE))
+fourth_july <- fires$alarm_date[mask]
+read <- fires %>% select(alarm_date) %>% ymd_hms(tz="UTC")
+```
+
+``` {r results="asis"}
+new_dates <- fires
+new_dates$alarm_date <- as.Date(new_dates$alarm_date, "%Y/%m/%d")
+new_dates$cont_date <- as.Date(new_dates$cont_date, "%Y/%m/%d")
+busiest_days <- new_dates %>% 
+  filter(!is.na(alarm_date)) %>% 
+  group_by(alarm_date) %>% 
+  summarise(num_fires = n(), 
+            mean = mean(gis_acres), 
+            median = median(gis_acres), 
+            sd=sd(gis_acres)) %>% 
+  arrange(desc(num_fires)) %>% 
+  head(n=5)
+kable(busiest_days, caption="Top 5 Number of Daily Fires Since 1878")
+```
+
+It is hard to imagine that 122 fires are logged on June 6 even if it is
+a summer day. Before I analyze more time's, lets find out the meaning
+behind this. One explanation is it could be a bunch of controlled burns.
+Many of these did share the same inc_number. However, many had different
+names and containment dates. While the primary cause on July 30, 2015
+for lots of fires was smoking, on July 6, 2008 it was just lots of
+lightning.
+
+**CONT_DATE**
+``` {r results='asis', warning=FALSE}
+format <- "%Y/%m/%d %H:%M:%S %z"
+longest_fires <- new_dates %>% 
+  select(fire_name, alarm_date, cont_date, cause, objective) %>% 
+  filter(!is.na(alarm_date) & !is.na(cont_date)) %>% 
+  mutate(fire_duration = 
+           difftime(cont_date, alarm_date, format, units="days")) %>% 
+  arrange(desc(fire_duration)) %>% 
+  head(n=10)
+kable(longest_fires, caption="Longest Lasting Fires in California History Since 1878")
+```
+In the data set there are some alarm_dates and cont_dates entered incorrectly, like the cont_date occurring before the alarm_date. Hence, there is a possibility that these results have also been entered in incorrectly. The reason that some of these fires last so long, is that fire responders allow it, because it is in a rural area and fires can be beneficial. The cause for most of these fires is lightning, unknown, or miscellaneous. 
+
+``` {r echo=FALSE, warning=FALSE, results='asis'}
+#Get start and end time differences
+#Do not include fires with time_difference of 0 minutes or longer than a year
+fire_duration <- select(fires, alarm_date, cont_date, fire_name, cause,
+                        gis_acres) %>%
+  filter(!is.na(alarm_date) & alarm_date != "") %>% 
+  filter(!is.na(cont_date) & cont_date != "") %>%
+  mutate(minutes = as.numeric(difftime(cont_date, 
+                                       alarm_date, 
+                                       format, 
+                                       units="mins"))) %>% 
+  filter(minutes > 0) %>% 
+  mutate(hours=minutes/60) %>% 
+  filter(hours <= 8760) #hours in a year
+print("Fire Duration (Hours) Summary Statistics")
+summary(fire_duration$hours)
+```
+A problem is that there are so many missing values in cont_date there are very few fires you can find the fire duration for relative to the whole data set. Among those available, there is a huge variance in the duration of fires. These shorter lasting fires are not just prescribed burns and have many different causes.
+
+**CAUSE**
+``` {r echo=FALSE}
+#Cause and number of fires 
+numerical_causes <- seq(1:19)
+string_causes <- c("Lightning", "Equipment Use", "Smoking", "Campfire", "Debris"
+                   ,"Railroad", "Arson", "Playing with Fire", "Miscellaneous", 
+                   "Vehicle", "Power Line", "Firefighter Training", 
+                   "Non-Firefighter Training", "Unknown/Unidentified", 
+                   "Structure", "Aircraft", "Volcanic", 
+                   "Escaped Prescribed Burn", "Illegal Alien Campfire")
+fire_causes <- fires %>% 
+  filter(!is.na(cause) & !is.na(gis_acres)) %>% 
+  group_by(cause) %>% 
+  summarise(count=n(), avg_size=mean(gis_acres)) %>% 
+  arrange(cause)
+fire_causes <- fire_causes %>% 
+  select(cause, avg_size, count) %>% 
+  mutate(string_cause = string_causes[cause])
+fire_cause <- fire_causes %>% 
+  select(cause, string_cause, avg_size, count) %>% 
+  arrange(desc(avg_size))
+kable(fire_cause, caption="Causes of the Biggest Fires on Average since 1878")
+```
+As I previously mentioned, the reason some fires duration is so long is because they are in remote areas and allowed to continue to burn. Despite this, human induced fires like campfires, still produce bigger fires on average than nature induced fires like lightning. In the next sections we will explore if certain causes of fires are becoming more or less frequent. 
+
+``` {r include=FALSE}
+#What are the cause of shorter fires? 
+first_quantile = quantile(fire_duration$hours)[2]
+fire_duration %>% 
+  filter(hours <= first_quantile) %>% 
+  group_by(cause) %>% 
+  summarise(count=n()) %>% 
+  arrange(desc(count))
+```
+
+``` {r include=FALSE}
+#Need a method to adjust number of fires for the year. Like how money is adjusted for inflation. 
+causes <- fires %>% 
+  filter(!is.na(cause) & !is.na(gis_acres)) %>% 
+  group_by(cause, year) %>% 
+  summarise(count = n(), acres_burned=sum(gis_acres))
+causes %>% 
+  subset(cause %in% c(1, 2, 5, 7, 9, 14)) %>% 
+  ggplot(aes(x=year, y=count, group=cause, color=cause)) +
+  geom_smooth(se=FALSE) 
+  
+
+num<-ggplot(data=causes,  aes(x=cause, y=count, fill=as.factor(cause))) + 
+  geom_bar(stat='identity') + 
+  xlab('Cause') + ylab('Number of Fires')
+# This doesn't display all causes because value of unknown so large 
+size<-ggplot(data=causes, aes(x=cause, y=acres_burned,fill=as.factor(cause))) +
+  geom_bar(stat='identity') + 
+  xlab('Cause') + ylab('Total Acres burned') 
+
+#grid.arrange(num, size, nrow = 1, top="Size and Number of Fires by Cause 2019")
+```
+
+**COMMENTS**
+
+The max length of a comment is
+260 characters, comments are longer but they are cut off by an \*
+indicating there is more to that comment somewhere. By reading comments
+interesting ones to me were "The cause was target shooting", "... Total
+Cost 18,600,600", "Children playing with fire", and names of people. Most of the comments in the data set are empty. 
+
+``` {r include=FALSE}
+fire_size <- fires$report_ac 
+fire_size <- fire_size[!is.na(fire_size)]
+summary(fire_size)
+```
+
+``` {r include=FALSE}
+fires %>% filter(report_ac == 0) %>% group_by(year, report_ac) %>% 
+  unique() %>% count() %>% arrange(desc(n))  %>% head()
+```
+
+``` {r include=FALSE}
+#paste("Total acres burned ", sum(fire_size))
+fires %>% filter(!is.na(report_ac)) %>% group_by(year) %>% 
+  summarise(report_ac = sum(report_ac)) %>%
+  arrange(desc(report_ac)) %>% head()
+```
+
+**GIS_ACRES**
+``` {r echo=FALSE, results='asis'}
+worst_years <- fires %>% 
+  filter(!is.na(gis_acres)) %>% 
+  group_by(year) %>% 
+  summarise(gis_acres = sum(gis_acres)) %>%
+  ungroup() %>% 
+  mutate(square_miles = gis_acres/640) %>% 
+  arrange(desc(gis_acres)) %>% 
+  head(n=10)
+kable(worst_years, caption="Highest Acres Burnage in California History since 1878")
+```
+For reference 500,000 acres is equal to 780 square miles, a square mile
+being a square with each side being 1 mile in length!!! The size of Yosemite national park is 1169 square miles, and the size of New York is 302 square miles.
+
+``` {r echo=FALSE}
+differences <- fires %>% 
+  filter(!is.na(report_ac) & !is.na(gis_acres)) %>% 
+  mutate(diff = abs(report_ac - gis_acres))
+paste("Number of fire reports where the difference between report_ac and gis_acres is greater than 100:", sum(differences[, "diff"] > 100))
+```
+
+``` {r include=FALSE, eval=FALSE}
+differences %>% 
+  filter(!is.na(year) & diff > 100) %>%
+  count(year) %>% 
+  arrange(desc(n)) %>% 
+  head() 
+rename(differences_year, "Num large discrepencies" = "n")
+```
+There are many differences between REPORT_AC and GIS_ACRES. Many of the discrepancies come from the 2000s as well so it is not the fault of the older data. There is less missing data for GIS_ACRES so we will primarily be depending on this. There is the possibility of using REPORT_AC data if GIS_ACRES is missing and vice versa. 
+
+**C_METHOD**
+``` {r include=FALSE}
+table(fires$c_method) %>% sort(decreasing=TRUE)
+```
+
+``` {r}
+get_mode <- function(vec) { 
+  frequencies <- table(vec) %>% sort(decreasing=TRUE)
+  strtoi(names(frequencies)[1])
+} 
+
+c_method_yr <- fires %>% 
+  filter(!is.na(c_method) & c_method != 8) %>%
+  group_by(year) %>%
+  summarise(c_method = get_mode(c_method))
+year <- fires %>% filter(year == "2020")
+```
+
+``` {r incude=FALSE}
+#Collection methods 
+first_yr_c_method <- fires %>% select(year, c_method) %>% 
+  drop_na() %>% arrange(year) %>% head()
+total_c <- table(fires$c_method)
+labels <- c("GPS Ground", "GPS Air", "Infared", "Other Imagery", 
+            "Photo Interpretation", "Hand Drawn", "Mixed Collection Tools",
+            "Unknown")
+df <- data.frame(Method = labels, count = as.vector(total_c))
+df <- arrange(df, desc(count))
+```
+
+``` {r echo=FALSE}
+#Collection methods since 1908 
+pie <- ggplot(df, aes(x="", y=count, fill=Method)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) + theme_void()
+pie + ggtitle(paste("Collection Methods Used Since", first_yr_c_method$year[1]))
+```
+
+``` {r echo=FALSE, message=FALSE}
+#How collection methods have changed over the years 
+ggplot(c_method_yr, aes(x = year, y=c_method, color=as.factor(c_method))) +
+  geom_point() + 
+  ggtitle("Most Popular Collection Method by Year") + 
+  scale_color_manual(labels = c("GPS Ground", "Other Imagery", "Hand Drawn"),
+                     values = c("red", "blue", "green")) 
+```
+
+Here we can see the transition of the most frequently used collection method as time goes on.
+
+**OBJECTIVE**
+``` {r echo=FALSE, results='asis'}
+#Top 5 Biggest Wildfires and Resource Benefit 
+wildfire <- fires %>% filter(objective == 1)
+resource <- fires %>% filter(objective == 2) 
+top5_wildfire <- wildfire %>% 
+  filter(!is.na(gis_acres)) %>% 
+  arrange(desc(gis_acres)) %>% 
+  head(n=5)
+top5_resource <- resource %>% 
+  filter(!is.na(gis_acres)) %>% 
+  arrange(desc(gis_acres)) %>% 
+  head(n=5)
+top5_wildfire <- top5_wildfire %>% 
+  select(year, fire_name, gis_acres, cause, objective)
+top5_resource <- top5_resource %>% 
+  select(year, fire_name, gis_acres, cause, objective)
+kable(top5_wildfire, caption="Top 5 Biggest Wildfires in California since 1878")
+kable(top5_resource, caption="Top 5 Biggest Prescribed Burns since 1878") 
+```
+As we saw previously with the longest lasting fires in recent history most of them originated from wildfires. It is interesting that the cause of the biggest prescribed fires have all been lightning. In fact, there are no prescribed burns that do not originate from lightning in this data set that has GIS_ACRES data.
+
+```{r include=FALSE}
+#Causes of biggest prescribed burns that are not lightning induced 
+resource %>% 
+  filter(!is.na(gis_acres) & cause != 1) %>% 
+  arrange(desc(gis_acres)) %>% 
+  head(n=5) %>% 
+  select(year, fire_name, gis_acres, cause, objective)
+```
+
+```{r}
+#Are number of prescribed burns increasing? 
+yearly_resource_burns <- resource %>% 
+  filter(!is.na(gis_acres) & gis_acres > 0) %>% 
+  select(year, gis_acres) %>% 
+  group_by(year) %>% 
+  summarise(num_fires = n(), total_acres_burned = sum(gis_acres)) 
+```
+
+```{r echo=FALSE}
+yearly_fires <- ggplot(yearly_resource_burns, aes(x=year, y=num_fires)) +
+  geom_line()
+acres_burned <- ggplot(yearly_resource_burns) + 
+  geom_line(aes(x=year, y=total_acres_burned))
+acres_burned + ggtitle("Yearly Acres Burned in Prescribed Fires") + 
+  xlab("Year") + ylab("Acres Burned")
+```
+
+The number of acres burned in prescribed burns has never been lower until this last decade. At the same time, California has experienced some of the worst fires in the last decade. While correlation does not prove causation, poor fire management in the off season may explain the recent surge in fires. 
+
+#### Exploratory Data Analysis
+``` {r include=FALSE, eval=FALSE}
+# Number of fires and acres burned by cause 
+causes <- fires %>% 
+  filter(year == "2020" & !is.na(report_ac)) %>% 
+  group_by(cause) %>% 
+  summarise(report_ac = sum(report_ac))
+num_fires <- fires %>%
+  filter(year == "2020" & !is.na(cause)) %>% 
+  group_by(cause) %>% 
+  summarise(count = n()) %>% 
+  drop_na()  %>% 
+  filter(cause != 16)
+causes <- mutate(causes, fires = num_fires$count)
+# I tried really hard to get this to display the meanings of the numbers 
+num<-ggplot(data=causes,  aes(x=cause, y=fires, fill=as.factor(cause))) + 
+  geom_bar(stat='identity') + 
+  xlab('Cause') + ylab('Total Fires') 
+# This doesn't display all causes because value of unknown so large 
+size<-ggplot(data=causes, aes(x=cause, y=report_ac,fill=as.factor(cause))) +
+  geom_bar(stat='identity') + 
+  xlab('Cause') + ylab('Acres burned')  
+grid.arrange(num, size, nrow = 1, top="Size and Number of Fires by Cause 2019")
+```
+
+``` {r}
+# Number of acres burned 2010-2020
+decade_fires <- fires %>% select(year, gis_acres) %>%
+  filter(year >= "2010" & !is.na(gis_acres)) 
+decade_fires_sum <- decade_fires %>% group_by(year) %>% 
+  summarise(gis_acres = sum(gis_acres))
+decade_fires_sum$gis_acres <- as.integer(decade_fires_sum$gis_acres)
+ggplot(decade_fires_sum, aes(x=year, y=gis_acres)) + 
+  geom_bar(stat="identity", fill="gray70") + 
+  geom_text(aes(label=gis_acres)) + 
+  xlab("Years") + ylab("Acres Burned") + 
+  ggtitle("Number of Acres Burned 2010-2020") 
+```
+
+
+``` {r echo=FALSE, warning=FALSE}
+# Number of fires 2010-2020
+# Note the requirements for fires to be reported in this data set from 2010 on
+num_fires <- fires %>% filter(year >= "2010") %>% 
+  group_by(year) %>% 
+  summarise(num=n())
+num_fires$year <- as.character(num_fires$year)
+ggplot(num_fires, aes(x=year, y=num)) + 
+  geom_bar(stat="identity", fill="gray70") + 
+  geom_text(aes(label=num)) + 
+  xlab("Years") + ylab("Number of Fires") + 
+  ggtitle("Number of Fires 2010-2020") 
+```
+
+
+``` {r echo=FALSE}
+# Fires by Cause 2020, 2019, 5 year avg 
+# Cause, num fires, year 
+cause2020 <- fires %>%
+  select(cause, year) %>% 
+  filter(year == "2020") %>% 
+  group_by(cause) %>% 
+  summarise(num_fires = n(), year="2020")
+cause2019 <- fires %>%
+  select(cause, year) %>% 
+  filter(year == "2019") %>% 
+  group_by(cause) %>% 
+  summarise(num_fires = n(), year="2019")
+cause_avg <- fires %>% 
+  select(cause, year) %>% 
+  filter(year >= "2015") %>% 
+  group_by(cause) %>% 
+  summarise(num_fires = (n()/5), year="5 Yr.Avg")
+df <- bind_rows(cause2020, cause2019)
+df <- bind_rows(df, cause_avg)
+# I would like to add labels of what causes are but that's no fun with ggplot
+# This graph is flawed because there is no 17. That's why 19 is missing
+xticks <- seq(1:18)
+xticks[17] <- 18
+xticks[18] <- 19
+ggplot(df, aes(fill=year, y=num_fires, x=cause)) + 
+  geom_bar(position="dodge", stat="identity") + 
+  scale_x_discrete(limit = xticks) +
+  xlab("Causes") + ylab("Number of Fires") + 
+  ggtitle("Fires by Cause \n2019, 2020, and 5 Year Average") + 
+  theme(legend.position="bottom")
+```
+
+``` {r echo=FALSE}
+# Arson occurrence and Acres Burned last decade 
+arson_num <- fires %>% 
+  select(cause, year) %>% 
+  filter(cause == 7 & year >= "1900") %>% 
+  group_by(year) %>% 
+  summarise(fires = n())
+arson_size <- fires %>% 
+  select(cause, year, gis_acres) %>% 
+  filter(cause == 7 & !is.na(gis_acres) & year >= "1900") %>% 
+  group_by(year) %>% 
+  summarise(gis_acres = sum(gis_acres))
+arson <- merge(arson_num, arson_size)
+arson$year <- as.character(arson$year)
+arson$gis_acres <- as.integer(arson$gis_acres)
+ggplot(arson, aes(x=year, y=fires, group=1)) + 
+  geom_line(color="red") + geom_point() + 
+  xlab("Year") + ylab("Number of Fires") + 
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+  ggtitle("Arson Fire Occurrence 1900-2020") 
+```
+
+
+``` {r echo=FALSE}
+arson %>% 
+  filter(year >= 2010 & year <= 2020) %>%
+  ggplot(aes(x=year, y=gis_acres)) + 
+  geom_bar(stat="identity", fill="red") + 
+  geom_text(aes(label=gis_acres)) + 
+  xlab("Year") + ylab("Acres Burned") + 
+  ggtitle("Arson Fire Acres Burned 2010-2020")
+```
+
+Arson does not have much statistical analysis, it is just surprising how much land is burned every year due to this crime. 
+
+``` {r echo=FALSE}
+# Number of fires and acres burned by month for 2020 
+months_labels <- c("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", 
+                   "AUG", "SEP", "OCT", "NOV", "DEC")
+df <- fires %>% 
+  filter(year == "2020")
+df$alarm_date <- as.Date(df$alarm_date, "%Y/%m/%d")
+num_fires_month <- df %>% 
+  group_by(month = floor_date(alarm_date, "month")) %>%
+  summarize(fires = n()) %>% 
+  filter(month < "2021-01-01")
+acres_month <- df %>% 
+  group_by(month = floor_date(alarm_date, "month")) %>%
+  filter(!is.na(gis_acres)) %>% 
+  summarize(gis_acres = sum(gis_acres)) %>% 
+  filter(month < "2021-01-01")
+monthly_fires <- merge(num_fires_month, acres_month, all=TRUE)
+monthly_fires$month <- as.character(monthly_fires$month)
+monthly_fires$gis_acres <- as.integer(monthly_fires$gis_acres)
+ggplot(monthly_fires, aes(x=month, y=fires)) + 
+  geom_bar(stat="identity", fill="red") + 
+  geom_text(aes(label=fires)) + 
+  scale_x_discrete(labels = months_labels) +
+  xlab("Year") + ylab("Number of Fires") + 
+  ggtitle("Monthly Fire Occurrence 2020") 
+```
+
+
+``` {r echo=FALSE, warning=FALSE}
+ggplot(monthly_fires, aes(x=month, y=gis_acres)) + 
+  geom_bar(stat="identity", fill="red") + 
+  geom_text(aes(label=gis_acres)) + 
+  scale_x_discrete(labels = months_labels) +
+  xlab("Year") + ylab("Acres Burned") + 
+  ggtitle("Acres Burned by Month 2020")
+```
+
+``` {r include=FALSE}
+# My brother has been CAL FIRE in Santa Clara County (SCU) since 2020 
+cal_fire <- fires %>% 
+  select(agency, unit_id) %>% 
+  filter(agency == "CDF") 
+cal_fire_units <- unique(cal_fire$unit_id)
+
+fires %>% filter(year == "2020" & unit_id == "SCU")
+```
+
+``` {r echo=FALSE, warning=FALSE, message=FALSE}
+#This is my first attempt here at tidying data. Only up from here. 
+#Lets see if median fire is increasing every year 
+fire_yr <- fires %>% 
+  filter(year > 1900 & gis_acres != "" & !is.na(gis_acres)) %>% 
+  group_by(year) %>% 
+  summarise(median = median(gis_acres), max = max(gis_acres), 
+            sum=sum(gis_acres), standard_deviation=sd(gis_acres), fires = n())
+plot <- ggplot(fire_yr, aes(x=year))
+tidy <- fire_yr %>% gather("stat", "value", -year)
+median <- plot + geom_point(aes(y=median)) + geom_smooth(aes(y=median))
+sd <- plot + geom_point(aes(y=standard_deviation)) + 
+  geom_smooth(aes(y=standard_deviation))
+max <- plot + geom_point(aes(y=max)) + geom_smooth(aes(y = max))
+sum <- plot + geom_point(aes(y=sum)) + geom_smooth(aes(y=sum))
+
+grid.arrange(median, sd, max, sum, nrow=2, 
+             top=textGrob("Yearly Acres Burned", gp=gpar(fontsize=15,font=1)))
+```
+
+```{r warning=FALSE, echo=FALSE}
+box <- ggplot(tidy, aes(x=year, y=value)) + 
+  geom_boxplot(aes(color = stat)) + 
+  facet_wrap(~stat, scales="free_y") + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  ggtitle("Yearly Acres Burned Data 1900-2020") + 
+  xlab("Year") + ylab("Unit of Measurement")
+box
+```
+
+```{r echo=FALSE, message=FALSE}
+fire_yr <- fires %>% 
+  filter(year >= 2010 & year <=2020 & gis_acres != "" & !is.na(gis_acres)) %>% 
+  group_by(year) %>% 
+  summarise(median = median(gis_acres), 
+            max = max(gis_acres), 
+            sum=sum(gis_acres), 
+            standard_deviation=sd(gis_acres), 
+            num_fires = n())
+plot <- ggplot(fire_yr, aes(x=year))
+tidy <- fire_yr %>% gather("stat", "value", -year)
+median <- plot + geom_point(aes(y=median)) + 
+  geom_smooth(aes(y=median), method="loess")
+sd <- plot + geom_point(aes(y=standard_deviation)) + 
+  geom_smooth(aes(y=standard_deviation), method="loess")
+max <- plot + geom_point(aes(y=max)) + 
+  geom_smooth(aes(y = max), method="loess")
+sum <- plot + geom_point(aes(y=sum)) + 
+  geom_smooth(aes(y=sum), method="loess")
+
+grid.arrange(median, sd, max, sum, nrow=2, 
+             top=textGrob("Yearly Acres Burned 2010-2020",
+                          gp=gpar(fontsize=15,font=1)))
+```
+
+``` {r echo=FALSE, warning=FALSE}
+# Number of fires by unit size 
+# Try to use facet split for this 
+fire_size <- fires %>% 
+  filter(!is.na(gis_acres)) %>% 
+  select(year, gis_acres, cause)
+a <- filter(fire_size, gis_acres <= .25 & gis_acres >= 0) %>% 
+  group_by(cause) %>% 
+  summarise(count=n()) %>% 
+  mutate("unit" = "[0 - .25]")
+b <- filter(fire_size, gis_acres > .25 & gis_acres <= 9.99) %>% 
+  group_by(cause) %>% 
+  summarise(count=n()) %>% 
+  mutate("unit" = "(.25 - 9.99]")
+c <- filter(fire_size, gis_acres > 9.99 & gis_acres <= 99) %>% 
+  group_by(cause) %>% 
+  summarise(count=n()) %>% 
+  mutate("unit" = "(9.99 - 99]")
+d <- filter(fire_size, gis_acres > 99 & gis_acres <= 299) %>% 
+  group_by(cause) %>% 
+  summarise(count=n()) %>% 
+  mutate("unit" = "(99 - 299]")
+e <- filter(fire_size, gis_acres > 299 & gis_acres <= 999) %>% 
+  group_by(cause) %>% 
+  summarise(count=n()) %>% 
+  mutate("unit" = "(299 - 999]")
+f <- filter(fire_size, gis_acres > 999 & gis_acres <= 4999) %>% 
+  group_by(cause) %>% 
+  summarise(count=n()) %>% 
+  mutate("unit" = "(999 - 4999]")
+g <- filter(fire_size, gis_acres > 4999) %>% 
+  group_by(cause) %>% 
+  summarise(count=n()) %>% 
+  mutate("unit" = "(5000, inf)")
+# Merge and Join take WAY too long
+# Want three columns, year, unit, and gis_acres 
+get_unit <- function(vec, letter) { 
+  unit <- c() 
+  i <- 0
+  while (i < length(vec)) { 
+    unit <- append(unit, letter, after=length(unit)) 
+    i <- i + 1
+  }
+  unit
+}
+df<-data.frame(unit =c(a$unit, b$unit, c$unit, d$unit, e$unit, f$unit, g$unit), 
+               count = c(a$count, b$count, c$count, d$count,
+                             e$count, f$count, g$count), 
+               cause = c(a$cause, b$cause, c$cause, d$cause, e$cause, f$cause,
+                         g$cause))
+df %>% filter(!is.na(cause)) %>% 
+  ggplot(aes(x=cause, y=count)) +
+  geom_bar(stat="identity") + 
+  xlab('Cause') + ylab('Num Fires') + 
+  facet_wrap(~unit, scales="free_y") + 
+  ggtitle("Fire Perimeters 1878-2020 by Unit Size and their Causes") + 
+  theme(legend.position="none")
+```
+
+```{r echo=FALSE, include=FALSE}
+###Has the avg mean fire changed? 
+avg_fire <- fires %>% 
+  filter(!is.na(gis_acres)) %>%
+  group_by(year) %>%
+  summarise(avg_fire <- mean(gis_acres))
+```
+
+## Conclusion
+
+The biggest discovery is that the number of prescribed burns has never been lower from 2010-2020 in recent California Fire History. This may be cause for why we have seen such a big spike in fires in recent history. Also, R's ggplot makes it extremely difficult to customize your graph. 
